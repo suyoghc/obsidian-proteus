@@ -16,14 +16,43 @@ Part of the Proteus family — same prompt engineering and variant styles as [an
 - Note parsing: heading-based, highlight-based, marker-based, LLM extraction
 - Variant generation and grading logic
 
+## How it works
+
+1. Open a note in Obsidian
+2. Run **"Proteus: Generate flashcards from current note"** from the command palette
+3. Proteus extracts concepts, generates variant Q+A pairs using the selected styles
+4. Cards are appended to your note under a `## Flashcards` heading in obsidian-spaced-repetition format
+5. The SR plugin handles scheduling and review
+
+### Card format (obsidian-spaced-repetition compatible)
+
+```markdown
+## Flashcards
+
+What function links the linear predictor to the response? %%proteus:wozniak_matuschak%%
+?
+The logit function.
+
+_____ accounts for non-independence in nested data. %%proteus:cloze_generation%%
+?
+Multilevel modeling.
+```
+
+### Commands
+
+- **Generate flashcards from current note** — extract + generate + append
+- **Refresh flashcards in current note** — remove old Proteus cards, regenerate
+- **Review flashcards** — points to obsidian-spaced-repetition for review
+
+## Dependencies
+
+- [obsidian-spaced-repetition](https://github.com/st3v3nmw/obsidian-spaced-repetition) — handles scheduling and review
+
 ## What's TODO
 
-- [ ] Review panel (Obsidian ItemView with question/answer pages)
-- [ ] Card storage (JSON in plugin data or note frontmatter)
-- [ ] Spaced repetition scheduling
-- [ ] Backlink-powered card generation
+- [ ] Backlink-powered card generation (use knowledge graph for discrimination style)
 - [ ] Export to Anki (AnkiConnect)
-- [ ] Command palette integration for generate + review
+- [ ] Inline review panel (independent of SR plugin)
 
 ## Concept extraction strategies
 

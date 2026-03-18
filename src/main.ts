@@ -4,7 +4,16 @@
  * Plugin entry point. Registers commands, settings, and the review view.
  */
 
-import { Plugin, PluginSettingTab, Setting, App, Notice } from "obsidian";
+import { Plugin, PluginSettingTab, Setting, App, Notice, TFile } from "obsidian";
+import {
+    generateVariant,
+    extractFromHeadings,
+    extractFromHighlights,
+    extractFromMarkers,
+    extractWithLLM,
+    ExtractedConcept,
+} from "./generator";
+import { appendCardsToNote, clearProteusCards, countProteusCards } from "./sr-integration";
 
 interface ProteusSettings {
     api_key: string;
@@ -43,6 +52,13 @@ export default class ProteusPlugin extends Plugin {
             callback: () => this.generateFromCurrentNote(),
         });
 
+        // Command: refresh cards in current note
+        this.addCommand({
+            id: "refresh-cards",
+            name: "Refresh flashcards in current note",
+            callback: () => this.refreshCurrentNote(),
+        });
+
         // Command: review due cards
         this.addCommand({
             id: "review-cards",
@@ -76,13 +92,82 @@ export default class ProteusPlugin extends Plugin {
         const content = await this.app.vault.read(file);
         new Notice(`Proteus: extracting concepts from "${file.basename}"...`);
 
-        // TODO: extract concepts, generate variants, open review panel
-        // This is the integration point for generator.ts
+        // Extract concepts based on strategy
+        let concepts: ExtractedConcept[];
+        switch (this.settings.extraction_strategy) {
+            case "highlights":
+                concepts = extractFromHighlights(content);
+                break;
+            case "markers":
+                concepts = extractFromMarkers(content);
+                break;
+            case "llm":
+                concepts = await extractWithLLM(
+                    content,
+                    this.settings.api_key,
+                    this.settings.model,
+                    this.settings.max_concepts,
+                );
+                break;
+            default:
+                concepts = extractFromHeadings(content);
+        }
+
+        if (!concepts.length) {
+            new Notice("Proteus: no concepts found in this note");
+            return;
+        }
+
+        new Notice(`Proteus: generating ${concepts.length} flashcards...`);
+
+        // Calculate note age for Bloom's
+        const noteAgeDays = Math.floor(
+            (Date.now() - file.stat.ctime) / (1000 * 60 * 60 * 24),
+        );
+
+        // Generate variants for each concept
+        const variants = [];
+        for (const concept of concepts) {
+            const result = await generateVariant(
+                concept.question,
+                concept.answer,
+                this.settings,
+                noteAgeDays,
+            );
+            if (result) variants.push(result);
+        }
+
+        if (!variants.length) {
+            new Notice("Proteus: generation failed — check API key and model");
+            return;
+        }
+
+        // Append to note in obsidian-spaced-repetition format
+        const count = await appendCardsToNote(this.app, file, variants);
+        new Notice(`Proteus: ${count} flashcards added to "${file.basename}"`);
+    }
+
+    async refreshCurrentNote() {
+        const file = this.app.workspace.getActiveFile();
+        if (!file) {
+            new Notice("Proteus: no active note");
+            return;
+        }
+
+        const content = await this.app.vault.read(file);
+        const removed = await clearProteusCards(this.app, file);
+        if (removed > 0) {
+            new Notice(`Proteus: removed ${removed} old cards, regenerating...`);
+        }
+        await this.generateFromCurrentNote();
     }
 
     openReviewPanel() {
-        // TODO: open a custom ItemView for review
-        new Notice("Proteus: review panel (coming soon)");
+        // obsidian-spaced-repetition handles review — point the user there
+        new Notice(
+            "Proteus: use the Spaced Repetition plugin to review.\n" +
+            "Cards are in your note's ## Flashcards section.",
+        );
     }
 }
 
