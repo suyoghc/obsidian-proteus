@@ -31,7 +31,7 @@ export function formatSRCard(variant: VariantResult): string {
         ? ` %%proteus:${variant.variant_style}%%`
         : "";
 
-    return `${q}${styleTag}${SEPARATOR}${a}`;
+    return `${q} #flashcard${styleTag}${SEPARATOR}${a}`;
 }
 
 /**
@@ -51,7 +51,7 @@ export function formatSRCardWithArtifact(variant: VariantResult): string {
         ? ` %%proteus:${variant.variant_style}%%`
         : "";
 
-    return `${codeBlock}${styleTag}${SEPARATOR}${a}`;
+    return `${codeBlock} #flashcard${styleTag}${SEPARATOR}${a}`;
 }
 
 /**
