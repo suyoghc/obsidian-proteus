@@ -221,7 +221,6 @@ export async function gradeResponse(
     const baseModel = config.model || DEFAULT_MODEL;
     const model = config.grading_model || baseModel;
     let maxTokens = config.grading_max_tokens || 280;
-    const timeoutMs = (config.grading_timeout_s || 10) * 1000;
     const feedbackMode = config.feedback_mode || "canonical";
     const ea = expectedAnswer || "";
 
@@ -251,7 +250,7 @@ export async function gradeResponse(
         .replace("{answer}", canonicalAnswer)
         .replace("{response}", userResponse);
 
-    const resp = await callApi(apiKey, model, system, userMsg, maxTokens, timeoutMs);
+    const resp = await callApi(apiKey, model, system, userMsg, maxTokens);
     if (!resp) return null;
 
     try {

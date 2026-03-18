@@ -1,6 +1,8 @@
 /**
- * Anthropic API client — ported from anki-proteus generator.py _call_api
+ * Anthropic API client — uses Obsidian's requestUrl to bypass CORS.
  */
+
+import { requestUrl } from "obsidian";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const DEFAULT_MODEL = "claude-sonnet-4-20250514";
@@ -17,13 +19,10 @@ export async function callApi(
     system: string,
     userMessage: string,
     maxTokens: number = 300,
-    timeoutMs: number = 15000,
 ): Promise<ApiResponse | null> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-
     try {
-        const resp = await fetch(API_URL, {
+        const resp = await requestUrl({
+            url: API_URL,
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -36,15 +35,14 @@ export async function callApi(
                 system,
                 messages: [{ role: "user", content: userMessage }],
             }),
-            signal: controller.signal,
         });
 
-        if (!resp.ok) {
-            console.error(`[Proteus] API error ${resp.status}`);
+        if (resp.status !== 200) {
+            console.error(`[Proteus] API error ${resp.status}: ${resp.text}`);
             return null;
         }
 
-        const result = await resp.json();
+        const result = resp.json;
         const usage = result.usage || {};
         for (const block of result.content || []) {
             if (block.type === "text") {
@@ -56,13 +54,7 @@ export async function callApi(
             }
         }
     } catch (e: any) {
-        if (e.name === "AbortError") {
-            console.error("[Proteus] API call timed out");
-        } else {
-            console.error(`[Proteus] API call failed: ${e}`);
-        }
-    } finally {
-        clearTimeout(timer);
+        console.error(`[Proteus] API call failed: ${e}`);
     }
     return null;
 }
